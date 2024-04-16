@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandala Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            padding: 20px;
+          background-image: url('https://images.unsplash.com/photo-1526779259212-939e64788e3c?crop=entropy&cs=srgb&fm=jpg&ixid=M3wzMjM4NDZ8MHwxfHJhbmRvbXx8fHx8fHx8fDE3MTMyNDY1NjV8&ixlib=rb-4.0.3&q=85');
+          background-size:cover;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .timer {
+            font-size: 7rem;
+            color: #000;
+            margin-bottom: 20px;
+        }
+
+        .history-section {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: #fff;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1;
+            display: none;
+        }
+      .hidden{
+        display:none;
+      }
+    </style>
+</head>
+<body>
+
+<div class="grid-container">
+    <div class="card">
+        <h2 id="mandalaName"></h2>
+        <p class="day-count"></p>
+        <button id="createSession">Create Meditation Session</button>
+    </div>
+
+    <div class="history-section">
+        <div class="collapsible" onclick="toggleCollapsible('meditationHistory')">Meditation History</div>
+        <div class="content" id="meditationHistory">
+            <p>Here, you can view your past meditation sessions. It's a record of your journey towards mindfulness.</p>
+        </div>
+    </div>
+
+    <div class="history-section">
+        <div class="collapsible" onclick="toggleCollapsible('mandalHistory')">Mandal History</div>
+        <div class="content" id="mandalHistory">
+            <p>Track the progress of your mandalas here. See how far you've come on your spiritual journey.</p>
+        </div>
+    </div>
+
+    <div id="timerDialog" class="hidden">
+        <div class="timer">13:00</div>
+        <button onclick="startTimer()">Start</button>
+        <button onclick="stopTimer()">Stop</button>
+        <button onclick="closeTimer()">Close</button>
+    </div>
+
+    <div id="toast" style="display:none;"></div>
+</div>
+
+<script>
+    // Initialize mandala details and progress
+    const mandalaDetails = {
+        name: '',
+        duration: 48,
+        startDate: '',
+        endDate: ''
+    };
+
+    // Initialize meditation and mandal history
+    let meditationHistory = [];
+    let mandalHistory = [];
+
+    let timerInterval;
+    let timerElement;
+    let minutes = 13;
+    let seconds = 0;
+    let sessionCompleted = false;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        timerElement = document.querySelector('.timer');
+        document.getElementById('createSession').addEventListener('click', function() {
+            document.getElementById('timerDialog').classList.remove('hidden');
+            sessionCompleted = false;
+        });
+        displayMeditationHistory();
+        displayMandalHistory();
+
+        // Show welcome toast
+        const storedName = localStorage.getItem('mandalaName');
+        if (storedName) {
+            const days = meditationHistory.length + 1;
+            showToast(`Welcome back ${storedName} to ${mandalaDetails.name}. This is your ${days}th day of meditation.`);
+        }
+    });
+
+    function toggleCollapsible(id) {
+        const content = document.getElementById(id);
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+        if (!sessionCompleted) {
+            logMeditationHistory(false);
+            sessionCompleted = true;
+        }
+    }
+
+    function closeTimer() {
+        document.getElementById('timerDialog').classList.add('hidden');
+    }
+
+    function updateTimer() {
+        seconds--;
+        if (seconds < 0) {
+            seconds = 59;
+            minutes--;
+        }
+        
+        if (minutes === 0 && seconds === 0) {
+            clearInterval(timerInterval);
+            showToast(`Your ${getPhaseOfDay()} meditation session completed @${getCurrentDateTime()}`);
+            logMeditationHistory(true);
+        }
+
+        timerElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function getPhaseOfDay() {
+        const hour = new Date().getHours();
+        if (hour < 6) return 'midnight';
+        if (hour < 12) return 'morning';
+        if (hour < 18) return 'afternoon';
+        return 'evening';
+    }
+
+    function getCurrentDateTime() {
+        const now = new Date();
+        return `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+    }
+
+    function showToast(message) {
+        const toastElement = document.getElementById('toast');
+        toastElement.textContent = message;
+        toastElement.style.display = 'block';
+        setTimeout(() => {
+            toastElement.style.display = 'none';
+        }, 5000);
+    }
+
+    function logMeditationHistory(completed) {
+        const currentDate = new Date();
+        meditationHistory.push({ 
+            startDate: currentDate.toLocaleString(),
+            endDate: getCurrentDateTime(),
+            completed
+        });
+        localStorage.setItem('meditationHistory', JSON.stringify(meditationHistory));
+        displayMeditationHistory();
+    }
+
+    function displayMeditationHistory() {
+        const history = JSON.parse(localStorage.getItem('meditationHistory')) || [];
+        const historyContainer = document.getElementById('meditationHistory');
+        historyContainer.innerHTML = '';
+        history.forEach((entry, index) => {
+            const entryElement = document.createElement('div');
+            entryElement.textContent = `${entry.startDate} - ${entry.endDate} - Completed: ${entry.completed ? 'Yes' : 'No'}`;
+            historyContainer.appendChild(entryElement);
+        });
+    }
+
+    function displayMandalHistory() {
+        const history = JSON.parse(localStorage.getItem('mandalProgress')) || [];
+        const historyContainer = document.getElementById('mandalHistory');
+        historyContainer.innerHTML = '';
+        history.forEach((entry, index) => {
+            const entryElement = document.createElement('div');
+            entryElement.textContent = `${entry.name} - Created on: ${entry.startDate} - Ending on: ${entry.endDate}`;
+            historyContainer.appendChild(entryElement);
+        });
+    }
+</script>
+
+</body>
+</html>
